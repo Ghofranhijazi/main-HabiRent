@@ -34,10 +34,17 @@ const Login = () => {
           return;
         }
 
-        dispatch(setUser({ id: userData.id, name: userData.name, email: userData.email }));
-        navigate("/");
+        dispatch(setUser({ id: userData.id, name: userData.name, email: userData.email,  role: userData.role }));
+        // ✅ توجيه المستخدم إلى الصفحة المناسبة بناءً على دوره
+        if (userData.role === "admin") {
+          navigate("/Dashboard");
+        } else if (userData.role === "landlord") {
+          navigate("/Portal");
+        } else {
+          navigate("/");
+        }
       } else {
-        alert("User data not found.");
+        alert("⚠️ User data not found.");
       }
     } catch (error) {
       console.error("Error logging in:", error.message);
@@ -62,6 +69,7 @@ const Login = () => {
           name: user.displayName,
           email: user.email,
           blocked: false,
+          role: "user",
         };
         await set(userRef, userData);
       } else {
@@ -73,8 +81,14 @@ const Login = () => {
         return;
       }
 
-      dispatch(setUser({ id: userData.id, name: userData.name, email: userData.email }));
-      navigate("/");
+      dispatch(setUser({ id: userData.id, name: userData.name, email: userData.email, role: userData.role }));
+      if (userData.role === "admin") {
+        navigate("/Dashboard");
+      } else if (userData.role === "landlord") {
+        navigate("/Portal");
+      } else {
+        navigate("/");
+      }
     } catch (error) {
       alert("Error signing in with Google: " + error.message);
     }

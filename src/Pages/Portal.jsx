@@ -1,11 +1,35 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ApartmentCard from "../Component/ApartmentCard ";
 import Userprofile from "../Pages/Userprofile";
 import Rentingrequest from "../Component/RentingRequest ";
+import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 
 const Portal = () => {
   // State to track the active tab
   const [activeTab, setActiveTab] = useState("Owner Profile");
+  const navigate = useNavigate();
+
+  // ✅ جلب بيانات المستخدم من Redux
+  const user = useSelector((state) => state.auth.user);
+
+  // ✅ التحقق من أن المستخدم هو Landlord فقط
+  useEffect(() => {
+    if (!user) {
+      navigate("/Login"); // ✅ إعادة التوجيه إلى تسجيل الدخول إذا لم يكن هناك مستخدم مسجل
+    } else if (user.role !== "landlord") {
+      navigate("/"); // ✅ إعادة التوجيه إلى الصفحة الرئيسية إذا لم يكن المستخدم Landlord
+    }
+  }, [user, navigate]);
+
+  // ✅ إذا لم يتم تحميل بيانات المستخدم بعد، عرض رسالة "Loading..."
+  if (!user) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p className="text-lg font-semibold">🔄 Loading...</p>
+      </div>
+    );
+  }
 
   // Function to handle tab clicks
   const handleTabClick = (tabName) => {

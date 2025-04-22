@@ -8,19 +8,16 @@ const UserProfile = () => {
     email: "",
     phone: "",
     gender: "male",
+    role: "", // إضافة متغير role
   });
 
   const [userId, setUserId] = useState(null);
-  const [isOwner, setIsOwner] = useState(false);
-  const [rentedProperties, setRentedProperties] = useState([]);
 
   useEffect(() => {
     onAuthStateChanged(auth, (user) => {
       if (user) {
         setUserId(user.uid);
         fetchUserData(user.uid);
-        fetchRentedProperties();
-        checkIfUserIsOwner(user.uid);
       }
     });
   }, []);
@@ -36,45 +33,11 @@ const UserProfile = () => {
           email: response.data.email || "",
           phone: response.data.phone || "",
           gender: response.data.gender || "male",
+          role: response.data.role || "user", // تعيين الدور من قاعدة البيانات
         });
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
-    }
-  };
-
-  const fetchRentedProperties = async () => {
-    try {
-      const response = await axios.get(
-        "https://jsonplaceholder.typicode.com/posts"
-      );
-      const fakeData = response.data.slice(0, 5).map((item, index) => ({
-        id: item.id,
-        title: item.title,
-        totalPayment: (index + 1) * 500,
-        isPaid: index % 2 === 0,
-      }));
-      setRentedProperties(fakeData);
-    } catch (error) {
-      console.error("Error fetching rented properties:", error);
-    }
-  };
-
-  const checkIfUserIsOwner = async (uid) => {
-    try {
-      const response = await axios.get(
-        `https://rent-app-a210b-default-rtdb.firebaseio.com/student_housing.json`
-      );
-
-      if (response.data) {
-        const userApartments = Object.values(response.data).filter(
-          (apartment) => apartment.id === uid && apartment.approve === true
-        );
-
-        setIsOwner(userApartments.length > 0);
-      }
-    } catch (error) {
-      console.error("Error checking owner status:", error);
     }
   };
 
@@ -144,95 +107,75 @@ const UserProfile = () => {
         </select>
       </div>
 
-      {/* ✅ إذا كان Owner، نجعل تفاصيل الحساب تمتد على عرض الصفحة بالكامل */}
-      <div
-        className={`w-full max-w-5xl ${
-          isOwner ? "" : "grid grid-cols-1 md:grid-cols-2 gap-6"
-        } flex-grow`}
-      >
-        {/* ✅ تفاصيل الحساب */}
-        <div
-          className={`bg-white shadow-lg rounded-lg p-6 min-h-[400px] flex flex-col justify-between ${
-            isOwner ? "w-full" : ""
-          }`}
-        >
-          <h2 className="text-lg font-semibold text-gray-700 mb-4">
-            Account Details
-          </h2>
-          <p className="text-gray-400 text-sm">
-            {isOwner
-              ? "You are an Owner. You can list rental properties."
-              : "You are a User. You can rent properties."}
-          </p>
-          <hr />
+      {/* ✅ بيانات المستخدم */}
+      <div className="w-full max-w-5xl bg-white shadow-lg rounded-lg p-6">
+        <h2 className="text-lg font-semibold text-gray-700 mb-4">
+          Account Details
+        </h2>
+        <p className="text-gray-400 text-sm">
+          {formData.role === "landlord"
+            ? "You are a Owner. You can list rental properties."
+            : "You are a User. You can rent properties."}
+        </p>
+        <hr />
 
-          <form
-            onSubmit={handleSubmit}
-            className="flex-grow flex flex-col justify-between"
-          >
-            <div>
-              <div className="mt-4">
-                <label className="block text-gray-600 font-medium">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  className="w-full border border-gray-300 rounded-md p-2"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-
-              <div className="mt-4">
-                <label className="block text-gray-600 font-medium">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  className="w-full border border-gray-300 rounded-md p-2"
-                  value={formData.email}
-                  onChange={handleChange}
-                  disabled
-                />
-              </div>
-
-              <div className="mt-4">
-                <label className="block text-gray-600 font-medium">
-                  Phone Number
-                </label>
-                <input
-                  type="text"
-                  name="phone"
-                  className="w-full border border-gray-300 rounded-md p-2"
-                  value={formData.phone}
-                  onChange={handleChange}
-                />
-              </div>
+        <form onSubmit={handleSubmit} className="flex-grow flex flex-col">
+          <div>
+            <div className="mt-4">
+              <label className="block text-gray-600 font-medium">Username</label>
+              <input
+                type="text"
+                name="name"
+                className="w-full border border-gray-300 rounded-md p-2"
+                value={formData.name}
+                onChange={handleChange}
+                required
+              />
             </div>
 
-            <button
-              type="submit"
-              className="mt-6 w-full bg-[#EC8305] hover:bg-[#d97305] text-white font-bold py-2 px-4 rounded"
-            >
-              Save Changes
-            </button>
-          </form>
-        </div>
+            <div className="mt-4">
+              <label className="block text-gray-600 font-medium">Email Address</label>
+              <input
+                type="email"
+                name="email"
+                className="w-full border border-gray-300 rounded-md p-2"
+                value={formData.email}
+                onChange={handleChange}
+                disabled
+              />
+            </div>
 
-        {/* ✅ إخفاء قسم Show Your Properties إذا كان Owner */}
-        {!isOwner && (
-          <div className="bg-white shadow-lg rounded-lg p-6 min-h-[400px] flex flex-col">
-            <h2 className="text-lg font-semibold text-gray-700 mb-4">
-              Show Your Properties
-            </h2>
-            <hr />
-            <p className="text-gray-500 mt-4">No properties rented yet.</p>
+            <div className="mt-4">
+              <label className="block text-gray-600 font-medium">Phone Number</label>
+              <input
+                type="text"
+                name="phone"
+                className="w-full border border-gray-300 rounded-md p-2"
+                value={formData.phone}
+                onChange={handleChange}
+              />
+            </div>
           </div>
-        )}
+
+          <button
+            type="submit"
+            className="mt-6 w-full bg-[#EC8305] hover:bg-[#d97305] text-white font-bold py-2 px-4 rounded"
+          >
+            Save Changes
+          </button>
+        </form>
       </div>
+
+      {/* ✅ عرض قسم "Show Your Properties" فقط إذا كان `role` هو "user" */}
+      {formData.role === "user" && (
+        <div className="w-full max-w-5xl bg-white shadow-lg rounded-lg p-6 mt-6">
+          <h2 className="text-lg font-semibold text-gray-700 mb-4">
+            Show Your Properties
+          </h2>
+          <hr />
+          <p className="text-gray-500 mt-4">No properties rented yet.</p>
+        </div>
+      )}
     </div>
   );
 };

@@ -2,9 +2,15 @@ import { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import { getDatabase, ref, get, set } from "firebase/database"; // وظائف Realtime Database
 import { getAuth } from "firebase/auth"; // وظائف Auth
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 
-export default function PropertyBooking() {
+export default function PropertyBooking({ property, price, id }) {
+  const navigate = useNavigate();
+
+
+  const user = useSelector((state) => state.auth.user);
+
   const [isVisible, setIsVisible] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -17,10 +23,9 @@ export default function PropertyBooking() {
     purpose: "",
     startDate: "",
     endDate: "",
-    accept: false,
-
     clearanceDocument: null,
     termsAccepted: false,
+    price: price || 0,
   });
 
   const [bookingInfo, setBookingInfo] = useState({
@@ -62,7 +67,31 @@ export default function PropertyBooking() {
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [user]);
+
+
+  const handleOpenForm = () => {
+    if (!user) {
+      Swal.fire({
+        title: "Access Denied",
+        text: "You must be logged in as a user to apply for a rental.",
+        icon: "error",
+      }).then(() => navigate("/login"));
+      return;
+    }
+
+    if (user.role !== "user") {
+      Swal.fire({
+        title: "Restricted Access",
+        text: "Only users can apply for a rental.",
+        icon: "warning",
+      }).then(() => navigate("/"));
+      return;
+    }
+
+    setIsVisible(true);
+  };
+
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -79,85 +108,94 @@ export default function PropertyBooking() {
       clearanceDocument: file,
     }));
   };
-const handleSubmit = async (e) => {
-  e.preventDefault();
 
-  // حساب عدد الأيام بين تاريخ البداية والنهاية
-  const startDate = new Date(formData.startDate);
-  const endDate = new Date(formData.endDate);
-  const timeDiff = endDate.getTime() - startDate.getTime();
-  const daysUntilResponse = Math.ceil(timeDiff / (1000 * 3600 * 24));
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  // تحديث معلومات الحجز
-  setBookingInfo({
-    bookingName: formData.name,
-    recentBookings:
-      "Your rental application has been submitted. Please wait for our response.",
-    daysUntilResponse: `We will get back to you in ${daysUntilResponse} day${
-      daysUntilResponse > 1 ? "s" : ""
-    }.`,
-    features: bookingInfo.features,
-  });
+    // Validate required fields
+    if (!formData.price) {
+      Swal.fire({
+        title: "Error",
+        text: "Price is missing. Please ensure the property has a valid price.",
+        icon: "error",
+      });
+      return;
+    }
 
-  // الحصول على uid من المستخدم الحالي
-  const auth = getAuth();
-  const user = auth.currentUser;
-  const uid = user ? user.uid : null;
+    // Calculate the number of days between the start and end date
+    const startDate = new Date(formData.startDate);
+    const endDate = new Date(formData.endDate);
+    const timeDiff = endDate.getTime() - startDate.getTime();
+    const daysUntilResponse = Math.ceil(timeDiff / (1000 * 3600 * 24));
 
-  // حفظ البيانات في Realtime Database مع uid
-  const db = getDatabase();
-  const bookingsRef = ref(db, "bookings/" + uid); // استخدام uid كجزء من المسار
-  await set(bookingsRef, {
-    _uid: uid, // إضافة uid إلى البيانات
-    name: formData.name,
-    email: formData.email,
-    contactNumber: formData.contactNumber,
-    tenants: formData.tenants,
-    tenantNames: formData.tenantNames,
-    gender: formData.gender,
-    roomType: formData.roomType,
-    purpose: formData.purpose,
-    startDate: formData.startDate,
-    endDate: formData.endDate,
-    approve: false,
-    clearanceDocument: formData.clearanceDocument
-      ? formData.clearanceDocument.name
-      : "",
-  });
+    // Update booking info
+    setBookingInfo({
+      bookingName: formData.name,
+      recentBookings:
+        "Your rental application has been submitted. Please wait for our response.",
+      daysUntilResponse: `We will get back to you in ${daysUntilResponse} day${
+        daysUntilResponse > 1 ? "s" : ""
+      }.`,
+      features: bookingInfo.features,
+    });
 
-  // عرض تنبيه النجاح
-  await Swal.fire({
-    title: "Application Submitted!",
-    text: "Your rental application has been submitted successfully. Please wait for our response.",
-    icon: "success",
-    background: "#ffcc00",
-    confirmButtonColor: "#3085d6",
-    cancelButtonColor: "#d33",
-    confirmButtonText: "OK",
-  });
+    // Save data to Realtime Database
+    const db = getDatabase();
+    const bookingsRef = ref(db, "bookings/" + formData.name);
+    await set(bookingsRef, {
+      name: formData.name,
+      email: formData.email,
+      contactNumber: formData.contactNumber,
+      tenants: formData.tenants,
+      tenantNames: formData.tenantNames,
+      gender: formData.gender,
+      roomType: formData.roomType,
+      purpose: formData.purpose,
+      startDate: formData.startDate,
+      endDate: formData.endDate,
+      clearanceDocument: formData.clearanceDocument
+        ? formData.clearanceDocument.name
+        : "",
+      price: formData.price, // Ensure price is included
+    });
 
-  // إعادة تعيين النموذج وإغلاق النافذة
-  setFormData({
-    name: "",
-    email: "",
-    contactNumber: "",
-    tenants: "",
-    tenantNames: "",
-    gender: "",
-    roomType: "",
-    purpose: "",
-    startDate: "",
-    endDate: "",
-    clearanceDocument: null,
-    termsAccepted: false,
-  });
-  setIsVisible(false);
-};
+    // Navigate to the Checkout page with the collected data and the property ID
+    navigate("/Cheackout", { state: { ...formData, propertyId: id } });
+
+    // Show success alert
+    await Swal.fire({
+      title: "Application Submitted!",
+      text: "Your rental application has been submitted successfully. Please wait for our response.",
+      icon: "success",
+      background: "#ffcc00",
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "OK",
+    });
+
+    // Reset the form and close the modal
+    setFormData({
+      name: "",
+      email: "",
+      contactNumber: "",
+      tenants: "",
+      tenantNames: "",
+      gender: "",
+      roomType: "",
+      purpose: "",
+      startDate: "",
+      endDate: "",
+      clearanceDocument: null,
+      termsAccepted: false,
+      price: price || 0, // Reset the price as well
+    });
+    setIsVisible(false);
+  };
 
   return (
     <div className="min-h-screen bg-white flex flex-col ">
       {/* نموذج التطبيق */}
-      {isVisible && (
+      {isVisible && user?.role === "user" && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
           <div className="bg-white rounded-xl p-6 max-w-md w-full max-h-[90vh] h-auto shadow-xl transform transition-all scale-95 overflow-y-auto">
             <h2 className="text-2xl font-bold text-center text-orange-600 mb-4">
@@ -231,19 +269,6 @@ const handleSubmit = async (e) => {
                 className="w-full p-4 border border-orange-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-200"
               />
               <div className="grid grid-cols-2 gap-4">
-                <select
-                  name="roomType"
-                  value={formData.roomType}
-                  onChange={handleChange}
-                  required
-                  className="w-full p-4 border border-orange-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-200"
-                >
-                  <option value="" disabled>
-                    Select Room Type
-                  </option>
-                  <option value="Single Room">Single Room</option>
-                  <option value="Double Room">Double Room</option>
-                </select>
                 <select
                   name="purpose"
                   value={formData.purpose}

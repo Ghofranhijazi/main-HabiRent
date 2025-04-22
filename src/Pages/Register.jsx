@@ -59,24 +59,29 @@ const Register = () => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // تخزين بيانات المستخدم في Firebase Realtime Database
-      await set(ref(database, "users/" + user.uid), {
+      const usersData = {
+        id: user.uid,
         name,
         email,
         phone,
-        id: user.uid, // إضافة ID الخاص بالمستخدم
-        blocked: false, // جعل المستخدم غير محظور افتراضيًا
-      });
-
-      // تحديث حالة Redux وتخزين بيانات المستخدم
-      dispatch(setUser({ id: user.uid, name, email, phone  }));
-     
-
-      // إعادة توجيه المستخدم إلى الصفحة الرئيسية
-      navigate("/");
+        blocked: false,
+        role: "user", // الافتراضي أن يكون مستخدم عادي
+      };
+  
+      await set(ref(database, "users/" + user.uid), usersData);
+  
+      // ✅ تحديث Redux بحالة المستخدم
+      dispatch(setUser(usersData));
+     // ✅ توجيه المستخدم بناءً على دوره
+      if (usersData.role === "admin") {
+        navigate("/Dashboard");
+      } else if (usersData.role === "landlord") {
+        navigate("/Portal");
+      } else {
+        navigate("/");
+      }
     } catch (error) {
-      console.error("Error signing up:", error.message);
-      alert("An error occurred during registration. Please try again.");
+      alert("Error signing in with Google:", error.message);
     }
   };
 
@@ -91,26 +96,34 @@ const Register = () => {
       const snapshot = await get(userRef);
   
      
-    let userData;
+   
 
     if (!snapshot.exists()) {
       // ✅ المستخدم جديد، قم بتخزين بياناته في Firebase
-      userData = {
+      const usersData = {
         id: user.uid,
         name: user.displayName,
         email: user.email,
         blocked: false,
+        role: "user",
       };
 
-      await set(userRef, userData);
+      await set(userRef, usersData);
     } else {
       // ✅ المستخدم موجود مسبقًا، استرجاع بياناته من Firebase
-      userData = snapshot.val();
+      usersData  = snapshot.val();
     }
 
     // ✅ تحديث Redux بـ `id`, `name`, `email`
-    dispatch(setUser({ id: userData.id, name: userData.name, email: userData.email }));
-      navigate("/");
+    dispatch(setUser( usersData ));
+       // ✅ توجيه المستخدم بناءً على دوره
+       if (usersData.role === "admin") {
+        navigate("/Dashboard");
+      } else if (usersData.role === "landlord") {
+        navigate("/Portal");
+      } else {
+        navigate("/");
+      }
     } catch (error) {
       alert("Error signing in with Google:", error.message);
     }

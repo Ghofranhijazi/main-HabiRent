@@ -12,6 +12,7 @@ import PostList from "./components/PostList";
 import BlockedUsers from "./components/BlockedUsers";
 import Layout from "./components/Layout"; // استيراد الـ Layout
 import ContactList from "./components/ContactList"; 
+import BookingsList from './components/BookingsList';
 
 const App = () => {
   return (
@@ -20,11 +21,11 @@ const App = () => {
         <Routes>
           
           <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/Dashboard" element={<Dashboard />} />
           <Route path="/" element={<Login />} />
           <Route path="/Signup" element={<Signup />} />
           <Route
-            path="/dashboard"
+            path="/Dashboard"
             element={
               <Layout>
                 <Dashboard />
@@ -70,6 +71,14 @@ const App = () => {
             element={
               <Layout>
                 <BlockedUsers />
+              </Layout>
+            }
+          />
+          <Route
+            path="/BookingsList"
+            element={
+              <Layout>
+                <BookingsList />
               </Layout>
             }
           />
